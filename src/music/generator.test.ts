@@ -3,7 +3,7 @@ import { generateProgressions } from "./generator";
 import { pitchClass } from "./chords";
 
 describe("generateProgressions", () => {
-  it("returns three distinct paths with exact endpoints and gap count", () => {
+  it("returns distinct named phrases with exact endpoints and gap count", () => {
     const results = generateProgressions({
       start: "C",
       end: "Am",
@@ -12,13 +12,17 @@ describe("generateProgressions", () => {
       difficulty: "rich",
     });
 
-    expect(results).toHaveLength(3);
-    expect(new Set(results.map((result) => result.chords.map((chord) => chord.symbol).join("|"))).size).toBe(3);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results.length).toBeLessThanOrEqual(3);
+    expect(new Set(results.map((result) => result.chords.map((chord) => chord.symbol).join("|"))).size).toBe(results.length);
     for (const result of results) {
       expect(result.chords).toHaveLength(4);
       expect(result.chords[0].symbol).toBe("C");
       expect(result.chords.at(-1)?.symbol).toBe("Am");
+      expect(result.chords.at(-2)?.symbol).toBe("E7");
       expect(result.voicings).toHaveLength(result.chords.length);
+      expect(result.patternName.length).toBeGreaterThan(3);
+      expect(result.romanNumerals).toHaveLength(result.chords.length);
     }
   });
 
@@ -30,8 +34,24 @@ describe("generateProgressions", () => {
       style: "jazzy",
       difficulty: "rich",
     });
-    expect(results).toHaveLength(3);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results.length).toBeLessThanOrEqual(3);
     expect(results[0].chords.at(-1)?.symbol).toBe("F#m7");
+  });
+
+  it("keeps easy paths free of extended and diminished shapes", () => {
+    const results = generateProgressions({
+      start: "C",
+      end: "G",
+      gapLength: 4,
+      style: "smooth",
+      difficulty: "easy",
+    });
+    results.forEach((result) => {
+      result.chords.slice(1, -1).forEach((value) => {
+        expect(value.suffix).not.toMatch(/maj7|m7b5|dim|m6/);
+      });
+    });
   });
 
   it("keeps every voiced note in range and inside the written chord", () => {
@@ -75,9 +95,11 @@ describe("generateProgressions", () => {
         style: styles[pairIndex % styles.length],
         difficulty: pairIndex % 2 ? "rich" : "easy",
       });
-      expect(results).toHaveLength(3);
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results.length).toBeLessThanOrEqual(3);
       results.forEach((result) => {
         expect(result.chords).toHaveLength(gapLength + 2);
+        expect(result.romanNumerals).toHaveLength(result.chords.length);
         expect(result.voicings.every((voicing) => voicing.midi.length >= 3)).toBe(true);
       });
     });

@@ -1,6 +1,6 @@
 # Key Changer
 
-Key Changer finds playable chord-only paths between two chords. It generates three harmonically distinct options, voices them for piano, shows the exact notes on a dimensional keyboard, plays the result, and exports a Standard MIDI file.
+Key Changer finds playable chord-only paths between two chords. It chooses up to three complete, musician-recognisable harmonic phrases, voices them for piano, shows the exact notes on a dimensional keyboard, plays the result, and exports a Standard MIDI file.
 
 ## Features
 
@@ -8,7 +8,9 @@ Key Changer finds playable chord-only paths between two chords. It generates thr
 - Automatic key inference with manual override
 - Smooth, Soulful, Jazzy and Cinematic harmony profiles
 - Easy and Rich voicing modes
-- Diatonic harmony, secondary dominants, ii–V motion, modal interchange and diminished passing chords
+- Curated cadences and turnarounds: ii–V, circle progressions, backdoor cadences, gospel walk-ups, borrowed-minor and Neapolitan approaches
+- Named patterns and Roman-numeral analysis so every suggested chord has an audible harmonic role
+- Quality filtering that returns fewer options rather than padding the set with weak paths
 - Voice-led piano inversions across a practical range
 - Sampled piano playback with a synthesised fallback
 - MIDI file download

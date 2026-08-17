@@ -161,6 +161,8 @@ function App() {
         setSelectedId(generated[0]?.id || "");
         setError("");
       } catch (generationError) {
+        setResults([]);
+        setSelectedId("");
         setError(generationError instanceof Error ? generationError.message : "I couldn't build that progression.");
       }
     },
@@ -236,7 +238,7 @@ function App() {
           <div className="hero-copy">
             <div className="eyebrow"><Icon name="sparkle" /> Harmonic pathfinder</div>
             <h1 id="page-title">Find the chords <span>between.</span></h1>
-            <p>Choose where you are and where you want to land. Key Changer finds a handful of beautiful, playable ways to join them.</p>
+            <p>Choose where you are and where you want to land. Key Changer finds curated, playable harmonic phrases to join them.</p>
           </div>
 
           <div className="composer glass-panel glass-strong">
@@ -323,10 +325,12 @@ function App() {
           <section className="workspace" aria-label="Generated chord paths">
             <div className="section-heading">
               <div>
-                <span className="section-kicker">Three ways through</span>
+                <span className="section-kicker">
+                  {results.length === 1 ? "One strong way through" : results.length === 2 ? "Two strong ways through" : "Three strong ways through"}
+                </span>
                 <h2>Choose the feeling</h2>
               </div>
-              <p>{selected.key.label} was chosen as the harmonic centre.</p>
+              <p>{displayChord(selected.chords.at(-1)?.symbol ?? "")} is treated as the local destination inside {selected.key.label}.</p>
             </div>
 
             <div className="result-grid">
@@ -343,6 +347,7 @@ function App() {
                       <span className={`result-label label-${result.label.toLowerCase()}`}>{result.label}</span>
                       {isSelected && <span className="selected-check"><Icon name="check" /></span>}
                     </div>
+                    <h3 className="pattern-name">{result.patternName}</h3>
                     <div className="mini-progression" aria-label={result.chords.map((chord) => chord.symbol).join(" to ")}>
                       {result.chords.map((chord, index) => (
                         <span className="mini-chord-wrap" key={`${chord.symbol}-${index}`}>
@@ -350,6 +355,9 @@ function App() {
                           {index < result.chords.length - 1 && <Icon name="arrow" />}
                         </span>
                       ))}
+                    </div>
+                    <div className="roman-line" aria-label={`Harmonic pattern ${result.romanNumerals.join(" to ")}`}>
+                      {result.romanNumerals.join("  ·  ")}
                     </div>
                     <p>{result.explanation}</p>
                     <button

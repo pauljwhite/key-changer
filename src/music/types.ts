@@ -36,10 +36,13 @@ export interface VoicedChord {
 export interface ProgressionResult {
   id: string;
   label: "Gentle" | "Colourful" | "Bold";
+  patternName: string;
+  romanNumerals: string[];
   chords: ParsedChord[];
   voicings: VoicedChord[];
   score: number;
   colour: number;
+  confidence: "high" | "good";
   explanation: string;
   key: KeyContext;
 }
