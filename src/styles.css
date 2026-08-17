@@ -15,6 +15,9 @@
   --glass-bright: 0.92;
   --glass-a: 0.12;
   --glass-blur: 12px;
+  --glass-saturation: 180%;
+  --glass-shine-a: 0.1;
+  --glass-edge: rgba(255, 255, 255, 0.16);
   --accent-h: 250;
   --accent-s: 72%;
   --accent-l: 74%;
@@ -25,8 +28,8 @@
   --accent-glow: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.28);
   --glass: rgba(var(--glass-tint), var(--glass-a));
   --glass-strong: rgba(var(--glass-tint), calc(var(--glass-a) + 0.04));
-  --blur: blur(var(--glass-blur)) saturate(180%) brightness(var(--glass-bright));
-  --rim: inset 0 1px 1px rgba(255, 255, 255, 0.13), inset 0 -1px 1px rgba(255, 255, 255, 0.065),
+  --blur: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-bright));
+  --rim: inset 0 1px 1px rgba(255, 255, 255, var(--glass-shine-a)), inset 0 -1px 1px rgba(255, 255, 255, 0.065),
     inset 1px 0 1px rgba(255, 255, 255, 0.045), inset -1px 0 1px rgba(255, 255, 255, 0.045);
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
   --ctl-h: 36px;
@@ -135,15 +138,15 @@ button:disabled {
 }
 
 .glass-panel {
-  background: var(--glass);
-  border: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(255, 255, 255, var(--glass-shine-a)), transparent 42%), var(--glass);
+  border: 1px solid var(--glass-edge);
   box-shadow: var(--rim), var(--shadow);
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
 }
 
 .glass-strong {
-  background: var(--glass-strong);
+  background: linear-gradient(135deg, rgba(255, 255, 255, var(--glass-shine-a)), transparent 42%), var(--glass-strong);
 }
 
 .site-header {
@@ -333,6 +336,50 @@ h1 span {
   border-radius: 28px;
 }
 
+.modulation-route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+  gap: 13px;
+  align-items: center;
+}
+
+.key-station {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(var(--glass-tint), 0.12);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.055);
+}
+
+.station-label {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.key-station .select-control > span {
+  margin-bottom: 6px;
+}
+
+.chord-select select {
+  height: 58px;
+  padding-left: 14px;
+  border-radius: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.chord-select > svg {
+  bottom: 22px;
+}
+
 .chord-pair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
@@ -390,7 +437,7 @@ h1 span {
   display: grid;
   width: 42px;
   height: 42px;
-  margin-bottom: 22px;
+  margin: 0;
   place-items: center;
   border: 1px solid var(--accent-line);
   border-radius: 14px;
@@ -401,7 +448,7 @@ h1 span {
 
 .composer-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 13px;
   margin-top: 20px;
 }
@@ -532,6 +579,11 @@ h1 span {
   text-align: right;
 }
 
+.section-heading > p strong {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
 .result-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -581,6 +633,15 @@ h1 span {
   background: rgba(var(--glass-tint), 0.14);
   font-size: 10px;
   font-weight: 600;
+}
+
+.method-name {
+  overflow: hidden;
+  margin-left: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .label-colourful {
@@ -991,7 +1052,6 @@ footer p {
   width: min(430px, 100%);
   padding: 23px;
   border-radius: 25px;
-  background: rgba(var(--glass-tint), 0.74);
   animation: modal-in 180ms ease both;
 }
 
@@ -1195,23 +1255,23 @@ footer p {
     border-radius: 22px;
   }
 
-  .chord-pair {
-    grid-template-columns: minmax(0, 1fr) 31px minmax(0, 1fr);
-    gap: 8px;
+  .modulation-route {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
-  .chord-field input {
-    height: 73px;
-    padding: 4px 13px 6px;
-    border-radius: 16px;
-    font-size: 31px;
+  .key-station {
+    gap: 11px;
+    padding: 14px;
+    border-radius: 17px;
   }
 
   .between-arrow {
     width: 31px;
     height: 31px;
-    margin-bottom: 21px;
+    margin: -1px auto;
     border-radius: 10px;
+    transform: rotate(90deg);
   }
 
   .between-arrow svg {
@@ -1219,15 +1279,25 @@ footer p {
   }
 
   .composer-options {
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
   .select-control select {
-    font-size: 12px;
+    min-height: 48px;
+    padding-right: 12px;
+    appearance: auto;
+    -webkit-appearance: menulist;
+    font-size: 16px;
   }
 
-  .key-select {
-    grid-column: 1 / -1;
+  .select-control > svg {
+    display: none;
+  }
+
+  .chord-select select {
+    height: 54px;
+    font-size: 18px;
   }
 
   .examples button:nth-of-type(n + 3) {

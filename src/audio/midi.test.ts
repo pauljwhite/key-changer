@@ -5,8 +5,10 @@ import { progressionToMidi } from "./midi";
 describe("progressionToMidi", () => {
   it("writes a valid single-track Standard MIDI file", () => {
     const [result] = generateProgressions({
+      sourceKey: "C major",
       start: "C",
-      end: "Am",
+      destinationKey: "G major",
+      end: "G",
       gapLength: 1,
       style: "smooth",
       difficulty: "easy",

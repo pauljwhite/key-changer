@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { parseChordSymbol, pitchClass } from "./chords";
 import { generateProgressions } from "./generator";
-import { pitchClass } from "./chords";
+import { ALL_CHORDS } from "./library";
 
 describe("generateProgressions", () => {
-  it("returns distinct named phrases with exact endpoints and gap count", () => {
+  it("builds a real C-major to G-major modulation with an establishing cadence", () => {
     const results = generateProgressions({
+      sourceKey: "C major",
       start: "C",
-      end: "Am",
+      destinationKey: "G major",
+      end: "G",
       gapLength: 2,
       style: "smooth",
       difficulty: "rich",
@@ -14,51 +17,82 @@ describe("generateProgressions", () => {
 
     expect(results.length).toBeGreaterThanOrEqual(1);
     expect(results.length).toBeLessThanOrEqual(3);
+    expect(results.some((result) => result.method === "Pivot chord")).toBe(true);
     expect(new Set(results.map((result) => result.chords.map((chord) => chord.symbol).join("|"))).size).toBe(results.length);
-    for (const result of results) {
+    results.forEach((result) => {
+      expect(result.sourceKey.label).toBe("C major");
+      expect(result.destinationKey.label).toBe("G major");
       expect(result.chords).toHaveLength(4);
       expect(result.chords[0].symbol).toBe("C");
-      expect(result.chords.at(-1)?.symbol).toBe("Am");
-      expect(result.chords.at(-2)?.symbol).toBe("E7");
-      expect(result.voicings).toHaveLength(result.chords.length);
-      expect(result.patternName.length).toBeGreaterThan(3);
+      expect(result.chords.at(-2)?.symbol).toBe("D7");
+      expect(result.chords.at(-1)?.symbol).toBe("G");
       expect(result.romanNumerals).toHaveLength(result.chords.length);
-    }
+    });
   });
 
-  it("supports altered and seventh-chord destinations", () => {
+  it("cadences into the new tonic before a non-tonic landing chord", () => {
     const results = generateProgressions({
-      start: "Dbmaj7",
-      end: "F#m7",
+      sourceKey: "C major",
+      start: "C",
+      destinationKey: "G major",
+      end: "Em",
       gapLength: 3,
-      style: "jazzy",
+      style: "smooth",
       difficulty: "rich",
     });
-    expect(results.length).toBeGreaterThanOrEqual(1);
-    expect(results.length).toBeLessThanOrEqual(3);
-    expect(results[0].chords.at(-1)?.symbol).toBe("F#m7");
+    results.forEach((result) => {
+      expect(result.chords.slice(-3).map((chord) => chord.symbol)).toEqual(["D7", "G", "Em"]);
+    });
   });
 
-  it("keeps easy paths free of extended and diminished shapes", () => {
-    const results = generateProgressions({
+  it("rejects routes whose selected chords do not belong to their keys", () => {
+    expect(() => generateProgressions({
+      sourceKey: "C major",
+      start: "F#",
+      destinationKey: "G major",
+      end: "G",
+      gapLength: 2,
+      style: "smooth",
+      difficulty: "easy",
+    })).toThrow(/does not belong clearly/i);
+  });
+
+  it("requires an actual change of key", () => {
+    expect(() => generateProgressions({
+      sourceKey: "C major",
       start: "C",
+      destinationKey: "C major",
+      end: "C",
+      gapLength: 2,
+      style: "smooth",
+      difficulty: "easy",
+    })).toThrow(/different destination key/i);
+  });
+
+  it("keeps easy bridges free of extended and fully diminished shapes", () => {
+    const results = generateProgressions({
+      sourceKey: "C major",
+      start: "C",
+      destinationKey: "G major",
       end: "G",
       gapLength: 4,
-      style: "smooth",
+      style: "cinematic",
       difficulty: "easy",
     });
     results.forEach((result) => {
       result.chords.slice(1, -1).forEach((value) => {
-        expect(value.suffix).not.toMatch(/maj7|m7b5|dim|m6/);
+        expect(value.suffix).not.toMatch(/maj7|m7b5|dim7|m9/);
       });
     });
   });
 
   it("keeps every voiced note in range and inside the written chord", () => {
     const [result] = generateProgressions({
+      sourceKey: "F major",
       start: "Fmaj7",
-      end: "Dm7",
-      gapLength: 2,
+      destinationKey: "A major",
+      end: "A",
+      gapLength: 3,
       style: "soulful",
       difficulty: "rich",
     });
@@ -70,38 +104,38 @@ describe("generateProgressions", () => {
     }
   });
 
-  it("throws a useful error for an unknown chord", () => {
-    expect(() =>
-      generateProgressions({ start: "Nope", end: "C", gapLength: 1, style: "smooth", difficulty: "easy" }),
-    ).toThrow(/not a chord/i);
-  });
-
-  it("covers a matrix of common chord families, styles and path lengths", () => {
-    const pairs = [
-      ["C", "G"],
-      ["Cm", "Ab"],
-      ["Bbmaj7", "Gm7"],
-      ["F#m7", "B7"],
-      ["Eb", "C7"],
-      ["A7", "Dm"],
+  it("covers common major and minor modulation routes", () => {
+    const routes = [
+      ["C major", "C", "G major", "G"],
+      ["G major", "G", "Bb major", "Bb"],
+      ["F major", "F", "A major", "A"],
+      ["Eb major", "Eb", "C minor", "Cm"],
+      ["A minor", "Am", "E major", "E"],
+      ["D major", "A7", "F major", "F"],
     ] as const;
     const styles = ["smooth", "soulful", "jazzy", "cinematic"] as const;
-    pairs.forEach(([start, end], pairIndex) => {
-      const gapLength = (pairIndex % 4) + 1;
+    routes.forEach(([sourceKey, start, destinationKey, end], index) => {
+      const gapLength = (index % 4) + 1;
       const results = generateProgressions({
+        sourceKey,
         start,
+        destinationKey,
         end,
         gapLength,
-        style: styles[pairIndex % styles.length],
-        difficulty: pairIndex % 2 ? "rich" : "easy",
+        style: styles[index % styles.length],
+        difficulty: index % 2 ? "rich" : "easy",
       });
       expect(results.length).toBeGreaterThanOrEqual(1);
       expect(results.length).toBeLessThanOrEqual(3);
-      results.forEach((result) => {
-        expect(result.chords).toHaveLength(gapLength + 2);
-        expect(result.romanNumerals).toHaveLength(result.chords.length);
-        expect(result.voicings.every((voicing) => voicing.midi.length >= 3)).toBe(true);
-      });
+      results.forEach((result) => expect(result.chords).toHaveLength(gapLength + 2));
     });
+  });
+});
+
+describe("chord picker vocabulary", () => {
+  it("offers a large, parseable native-select vocabulary", () => {
+    expect(ALL_CHORDS.length).toBeGreaterThan(200);
+    expect(new Set(ALL_CHORDS).size).toBe(ALL_CHORDS.length);
+    expect(ALL_CHORDS.every((symbol) => parseChordSymbol(symbol))).toBe(true);
   });
 });

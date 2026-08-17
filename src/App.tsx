@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { downloadMidi } from "./audio/midi";
 import { playProgression, stopPlayback } from "./audio/playback";
 import { BrandMark, Icon } from "./components/Icon";
 import { Piano } from "./components/Piano";
-import { parseChordSymbol } from "./music/chords";
 import { availableKeys, generateProgressions, prettyNote } from "./music/generator";
-import type { Difficulty, HarmonicStyle, ProgressionResult } from "./music/types";
+import { CHORD_GROUPS } from "./music/library";
+import type { Difficulty, GenerateOptions, HarmonicStyle, ProgressionResult } from "./music/types";
+import { glassVariables, type AppearanceTheme } from "./ui/glass";
 
 const ACCENTS = {
   iris: [250, 72, 74],
@@ -18,43 +19,22 @@ const ACCENTS = {
 } as const;
 
 type AccentName = keyof typeof ACCENTS | "custom";
-type Theme = "dark" | "light";
+type Theme = AppearanceTheme;
 
-const EXAMPLES = [
-  ["C", "Am"],
-  ["Fmaj7", "Dm7"],
-  ["G", "Cmaj7"],
-  ["Eb", "Cm"],
+const EXAMPLES: Array<GenerateOptions & { label: string }> = [
+  { label: "C → G", sourceKey: "C major", start: "C", destinationKey: "G major", end: "G", gapLength: 2, style: "smooth", difficulty: "rich" },
+  { label: "G → B♭", sourceKey: "G major", start: "G", destinationKey: "Bb major", end: "Bb", gapLength: 3, style: "soulful", difficulty: "rich" },
+  { label: "F → A", sourceKey: "F major", start: "F", destinationKey: "A major", end: "A", gapLength: 3, style: "cinematic", difficulty: "rich" },
+  { label: "E♭ → C min", sourceKey: "Eb major", start: "Eb", destinationKey: "C minor", end: "Cm", gapLength: 2, style: "smooth", difficulty: "easy" },
 ];
 
-const CHORD_SUGGESTIONS = [
-  "C",
-  "Cm",
-  "C7",
-  "Cmaj7",
-  "C#m7",
-  "Dbmaj7",
-  "D",
-  "Dm",
-  "Dm7",
-  "Eb",
-  "E",
-  "Em7",
-  "F",
-  "Fm",
-  "Fmaj7",
-  "F#m7",
-  "G",
-  "G7",
-  "Gm7",
-  "Ab",
-  "A",
-  "Am",
-  "Am7",
-  "Bb",
-  "Bbmaj7",
-  "Bdim7",
-];
+function ChordOptions() {
+  return CHORD_GROUPS.map((group) => (
+    <optgroup label={group.root} key={group.root}>
+      {group.options.map((option) => <option value={option.symbol} key={option.symbol}>{option.label}</option>)}
+    </optgroup>
+  ));
+}
 
 function readStorage<T>(key: string, fallback: T): T {
   try {
@@ -92,13 +72,14 @@ function displayChord(symbol: string): string {
 
 function App() {
   const [start, setStart] = useState("C");
-  const [end, setEnd] = useState("Am");
+  const [end, setEnd] = useState("G");
+  const [sourceKey, setSourceKey] = useState("C major");
+  const [destinationKey, setDestinationKey] = useState("G major");
   const [gapLength, setGapLength] = useState(2);
   const [style, setStyle] = useState<HarmonicStyle>("smooth");
   const [difficulty, setDifficulty] = useState<Difficulty>("rich");
-  const [keyChoice, setKeyChoice] = useState("auto");
   const [results, setResults] = useState<ProgressionResult[]>(() =>
-    generateProgressions({ start: "C", end: "Am", gapLength: 2, style: "smooth", difficulty: "rich" }),
+    generateProgressions({ sourceKey: "C major", start: "C", destinationKey: "G major", end: "G", gapLength: 2, style: "smooth", difficulty: "rich" }),
   );
   const [selectedId, setSelectedId] = useState(results[0]?.id || "");
   const [activeChord, setActiveChord] = useState(0);
@@ -128,9 +109,12 @@ function App() {
     root.style.setProperty("--accent-h", String(h));
     root.style.setProperty("--accent-s", `${adjustedS}%`);
     root.style.setProperty("--accent-l", `${adjustedL}%`);
-    const t = glass / 100;
-    root.style.setProperty("--glass-a", (0.72 - 0.68 * t).toFixed(3));
-    root.style.setProperty("--glass-blur", `${Math.round(30 - 24 * t)}px`);
+    const glassStyle = glassVariables(theme, glass);
+    root.style.setProperty("--glass-a", glassStyle.alpha.toFixed(3));
+    root.style.setProperty("--glass-blur", `${glassStyle.blur}px`);
+    root.style.setProperty("--glass-saturation", `${glassStyle.saturation}%`);
+    root.style.setProperty("--glass-shine-a", glassStyle.shine.toFixed(3));
+    root.style.setProperty("--glass-edge", glassStyle.edge);
     localStorage.setItem("key-changer-theme", JSON.stringify(theme));
     localStorage.setItem("key-changer-accent", JSON.stringify(accent));
     localStorage.setItem("key-changer-custom-accent", JSON.stringify(customAccent));
@@ -140,22 +124,20 @@ function App() {
 
   useEffect(() => () => stopPlayback(), []);
 
-  const startValid = useMemo(() => Boolean(parseChordSymbol(start)), [start]);
-  const endValid = useMemo(() => Boolean(parseChordSymbol(end)), [end]);
-
   const runGeneration = useCallback(
-    (nextStart = start, nextEnd = end) => {
+    (overrides: Partial<GenerateOptions> = {}) => {
       stopPlayback();
       setPlaying(false);
       setActiveChord(0);
       try {
         const generated = generateProgressions({
-          start: nextStart,
-          end: nextEnd,
-          gapLength,
-          style,
-          difficulty,
-          key: keyChoice,
+          sourceKey: overrides.sourceKey ?? sourceKey,
+          start: overrides.start ?? start,
+          destinationKey: overrides.destinationKey ?? destinationKey,
+          end: overrides.end ?? end,
+          gapLength: overrides.gapLength ?? gapLength,
+          style: overrides.style ?? style,
+          difficulty: overrides.difficulty ?? difficulty,
         });
         setResults(generated);
         setSelectedId(generated[0]?.id || "");
@@ -166,7 +148,7 @@ function App() {
         setError(generationError instanceof Error ? generationError.message : "I couldn't build that progression.");
       }
     },
-    [start, end, gapLength, style, difficulty, keyChoice],
+    [sourceKey, start, destinationKey, end, gapLength, style, difficulty],
   );
 
   const startPlayback = useCallback(async (result: ProgressionResult) => {
@@ -198,10 +180,15 @@ function App() {
     }
   };
 
-  const chooseExample = (from: string, to: string) => {
-    setStart(from);
-    setEnd(to);
-    window.setTimeout(() => runGeneration(from, to), 0);
+  const chooseExample = (example: GenerateOptions) => {
+    setSourceKey(example.sourceKey);
+    setStart(example.start);
+    setDestinationKey(example.destinationKey);
+    setEnd(example.end);
+    setGapLength(example.gapLength);
+    setStyle(example.style);
+    setDifficulty(example.difficulty);
+    window.setTimeout(() => runGeneration(example), 0);
   };
 
   const activeVoicing = selected?.voicings[activeChord];
@@ -236,39 +223,48 @@ function App() {
       <main>
         <section className="hero" aria-labelledby="page-title">
           <div className="hero-copy">
-            <div className="eyebrow"><Icon name="sparkle" /> Harmonic pathfinder</div>
-            <h1 id="page-title">Find the chords <span>between.</span></h1>
-            <p>Choose where you are and where you want to land. Key Changer finds curated, playable harmonic phrases to join them.</p>
+            <div className="eyebrow"><Icon name="sparkle" /> Piano modulation studio</div>
+            <h1 id="page-title">Make the key change <span>land.</span></h1>
+            <p>Choose the key you are leaving and the key you need to reach. Key Changer writes playable modulations that make the new home feel earned.</p>
           </div>
 
           <div className="composer glass-panel glass-strong">
-            <div className="chord-pair">
-              <label className={`chord-field ${start && !startValid ? "has-error" : ""}`}>
-                <span>From</span>
-                <input
-                  value={start}
-                  list="chord-options"
-                  onChange={(event) => setStart(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && runGeneration()}
-                  aria-invalid={start ? !startValid : false}
-                  spellCheck="false"
-                />
-              </label>
+            <div className="modulation-route">
+              <div className="key-station">
+                <span className="station-label">Leaving</span>
+                <label className="select-control key-route-select">
+                  <span>Starting key</span>
+                  <select aria-label="Starting key" value={sourceKey} onChange={(event) => setSourceKey(event.target.value)}>
+                    {availableKeys().map((key) => <option value={key} key={key}>{displayChord(key)}</option>)}
+                  </select>
+                  <Icon name="chevron" />
+                </label>
+                <label className="select-control chord-select">
+                  <span>Current chord</span>
+                  <select aria-label="Current chord" value={start} onChange={(event) => setStart(event.target.value)}>
+                    <ChordOptions />
+                  </select>
+                  <Icon name="chevron" />
+                </label>
+              </div>
               <div className="between-arrow" aria-hidden="true"><Icon name="arrow" /></div>
-              <label className={`chord-field ${end && !endValid ? "has-error" : ""}`}>
-                <span>To</span>
-                <input
-                  value={end}
-                  list="chord-options"
-                  onChange={(event) => setEnd(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && runGeneration()}
-                  aria-invalid={end ? !endValid : false}
-                  spellCheck="false"
-                />
-              </label>
-              <datalist id="chord-options">
-                {CHORD_SUGGESTIONS.map((chord) => <option value={chord} key={chord} />)}
-              </datalist>
+              <div className="key-station destination-station">
+                <span className="station-label">Arriving</span>
+                <label className="select-control key-route-select">
+                  <span>Destination key</span>
+                  <select aria-label="Destination key" value={destinationKey} onChange={(event) => setDestinationKey(event.target.value)}>
+                    {availableKeys().map((key) => <option value={key} key={key}>{displayChord(key)}</option>)}
+                  </select>
+                  <Icon name="chevron" />
+                </label>
+                <label className="select-control chord-select">
+                  <span>Landing chord</span>
+                  <select aria-label="Landing chord" value={end} onChange={(event) => setEnd(event.target.value)}>
+                    <ChordOptions />
+                  </select>
+                  <Icon name="chevron" />
+                </label>
+              </div>
             </div>
 
             <div className="composer-options">
@@ -297,24 +293,16 @@ function App() {
                 </select>
                 <Icon name="chevron" />
               </label>
-              <label className="select-control key-select">
-                <span>Key</span>
-                <select value={keyChoice} onChange={(event) => setKeyChoice(event.target.value)}>
-                  <option value="auto">Auto-detect</option>
-                  {availableKeys().map((key) => <option value={key} key={key}>{key}</option>)}
-                </select>
-                <Icon name="chevron" />
-              </label>
-              <button className="generate-button" type="button" onClick={() => runGeneration()} disabled={!startValid || !endValid}>
-                <Icon name="sparkle" /> Generate paths
+              <button className="generate-button" type="button" onClick={() => runGeneration()}>
+                <Icon name="sparkle" /> Build modulations
               </button>
             </div>
             {error && <p className="form-error" role="alert">{error}</p>}
             <div className="examples" aria-label="Example chord pairs">
               <span>Try</span>
-              {EXAMPLES.map(([from, to]) => (
-                <button type="button" onClick={() => chooseExample(from, to)} key={`${from}-${to}`}>
-                  {displayChord(from)} <Icon name="arrow" /> {displayChord(to)}
+              {EXAMPLES.map((example) => (
+                <button type="button" onClick={() => chooseExample(example)} key={example.label}>
+                  {example.label.split(" → ")[0]} <Icon name="arrow" /> {example.label.split(" → ")[1]}
                 </button>
               ))}
             </div>
@@ -326,11 +314,11 @@ function App() {
             <div className="section-heading">
               <div>
                 <span className="section-kicker">
-                  {results.length === 1 ? "One strong way through" : results.length === 2 ? "Two strong ways through" : "Three strong ways through"}
+                  {results.length === 1 ? "One strong modulation" : results.length === 2 ? "Two strong modulations" : "Three strong modulations"}
                 </span>
-                <h2>Choose the feeling</h2>
+                <h2>Choose the route</h2>
               </div>
-              <p>{displayChord(selected.chords.at(-1)?.symbol ?? "")} is treated as the local destination inside {selected.key.label}.</p>
+              <p><strong>{displayChord(selected.sourceKey.label)}</strong> becomes <strong>{displayChord(selected.destinationKey.label)}</strong>; the final cadence establishes the new key.</p>
             </div>
 
             <div className="result-grid">
@@ -345,6 +333,7 @@ function App() {
                     <div className="result-topline">
                       <span className="result-number">0{results.indexOf(result) + 1}</span>
                       <span className={`result-label label-${result.label.toLowerCase()}`}>{result.label}</span>
+                      <span className="method-name">{result.method}</span>
                       {isSelected && <span className="selected-check"><Icon name="check" /></span>}
                     </div>
                     <h3 className="pattern-name">{result.patternName}</h3>
@@ -422,7 +411,7 @@ function App() {
 
       <footer>
         <BrandMark />
-        <p>Built for the space between chords.</p>
+        <p>Built to make the key change land.</p>
       </footer>
 
       {settingsOpen && (
@@ -464,7 +453,7 @@ function App() {
             <label className="setting-group range-setting">
               <span><span>Glass effect</span><strong>{glass}%</strong></span>
               <input type="range" min="0" max="100" value={glass} onChange={(event) => setGlass(Number(event.target.value))} />
-              <small>Solid and calm</small><small>Light and clear</small>
+              <small>Solid surface</small><small>Maximum glass</small>
             </label>
           </section>
         </div>

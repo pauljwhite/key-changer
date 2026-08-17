@@ -1,5 +1,6 @@
 export type HarmonicStyle = "smooth" | "soulful" | "jazzy" | "cinematic";
 export type Difficulty = "easy" | "rich";
+export type ModulationMethod = "Pivot chord" | "Dominant chain" | "Chromatic bridge" | "Direct cadence";
 
 export interface ParsedChord {
   input: string;
@@ -43,7 +44,10 @@ export interface ProgressionResult {
   score: number;
   colour: number;
   confidence: "high" | "good";
+  method: ModulationMethod;
   explanation: string;
+  sourceKey: KeyContext;
+  destinationKey: KeyContext;
   key: KeyContext;
 }
 
@@ -53,5 +57,6 @@ export interface GenerateOptions {
   gapLength: number;
   style: HarmonicStyle;
   difficulty: Difficulty;
-  key?: string;
+  sourceKey: string;
+  destinationKey: string;
 }
